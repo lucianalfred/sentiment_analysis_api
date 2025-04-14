@@ -1,35 +1,44 @@
 import pandas as pd
 import nltk
 
+from nltk.sentiment.vader import SentimentIntensityAnalyzer
 from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize
 from nltk.stem import WordNetLemmatizer
 
-#nltk.download('all')
+from sklearn.metrics import confusion_matrix, classification_report
 
-df = pd.read_csv(pd.read_csv('https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/amazon.csv'))
+# nltk.download('vader_lexicon')
+# nltk.download('punkt')
+# nltk.download('stopwords')
+# nltk.download('wordnet')
 
+# Criar instância do analisador de sentimentos ANTES da função que o usa
+analyzer = SentimentIntensityAnalyzer()
 
-# apply the function df
-
-df['reviewText'] = df['reviewText'].apply(preprocess_text)
-df
-
-#create preprocess_text function
+# Função de pré-processamento
 def preprocess_text(text):
-    #tokenize the text
-    
-    tokens = word_tokenize(text.lower)
-    
-    #remove stop words
-    filltered_tokens = [ toke for token in tokens not int stopnwords.words('english')]
-    
-    #lematize the tokens
+    tokens = word_tokenize(text.lower())
+    filtered_tokens = [token for token in tokens if token not in stopwords.words('english')]
     lemmatizer = WordNetLemmatizer()
-    lematized_tokens = [lemmatizer.lemmatize(token) for token in filltered_tokens]
+    lemmatized_tokens = [lemmatizer.lemmatize(token) for token in filtered_tokens]
+    return ' '.join(lemmatized_tokens)
 
-    #Join the tokens bak into a string
-    preprocess_text = ' '.join(lematized_tokens)
-    
-    return preprocess_text
+# Função para obter sentimento
+def get_sentiment(text):
+    scores = analyzer.polarity_scores(text)
+    sentiment = 1 if scores['pos'] > 0 else 0
+    return sentiment
 
+# Carregar dataset
+df = pd.read_csv('https://raw.githubusercontent.com/pycaret/pycaret/master/datasets/amazon.csv')
+
+# Aplicar pré-processamento
+df['reviewText'] = df['reviewText'].astype(str).apply(preprocess_text)
+
+# Aplicar análise de sentimentos
+df['sentiment'] = df['reviewText'].apply(get_sentiment)
+
+# Avaliar o desempenho
+print(confusion_matrix(df['Positive'], df['sentiment']))
+print(classification_report(df['Positive'], df['sentiment']))
